@@ -22,11 +22,12 @@ const transporter = nodemailer.createTransport({
 });
 
 // Endpoint to send OTP
-app.post("/send-otp", (req, res) => {
+app.post("/send-otp", async (req, res) => {
   const { email, otp } = req.body;
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, message: "email and otp required" });
-  }
+  if (!email || !otp) return res.status(400).json({ error: "Missing fields" });
+  res.json({ success: true, message: `OTP sent to ${email}` });
+});
+
 
   const mailOptions = {
     from: `EcoVision <${SENDER_EMAIL}>`,
@@ -47,3 +48,4 @@ app.post("/send-otp", (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅ OTP mailer running on port ${PORT}`));
+
