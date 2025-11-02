@@ -2,16 +2,17 @@ const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const { Resend } = require("resend");
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Load environment variables
 const SENDER_EMAIL = process.env.SENDER_EMAIL;
 const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-// Configure transporter
+// Setup Gmail transporter for local dev
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -20,9 +21,12 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// OTP endpoint
-app.post("/send-otp", (req, res) => {
+// Setup Resend API client
+const resend = new Resend(RESEND_API_KEY);
+
+app.post("/send-otp", async (req, res) => {
   const { email, otp } = req.body;
+
   if (!email || !otp) {
     return res.status(400).json({ success: false, message: "email and otp required" });
   }
@@ -34,15 +38,27 @@ app.post("/send-otp", (req, res) => {
     text: `Your EcoVision verification code is: ${otp}\nThis code will expire in 10 minutes.`,
   };
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.error("Error sending email:", error);
-      return res.status(500).json({ success: false, error: error.message });
+  try {
+    // If running on Railway → use Resend
+    if (process.env.RAILWAY_ENVIRONMENT) {
+      const data = await resend.emails.send({
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        text: mailOptions.text,
+      });
+      return res.status(200).json({ success: true, service: "resend", data });
     }
-    return res.status(200).json({ success: true, info });
-  });
+
+    // Else → use Gmail transporter locally
+    const info = await transporter.sendMail(mailOptions);
+    return res.status(200).json({ success: true, service: "gmail", info });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-// For Railway, use dynamic port
+// For Railway, dynamic port
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ OTP mailer server running on port ${PORT}`));
