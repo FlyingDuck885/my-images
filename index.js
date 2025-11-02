@@ -1,4 +1,3 @@
-// index.js
 const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
@@ -8,18 +7,20 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// === CONFIGURE THESE ===
-// Replace with your Gmail address and the App Password you created in Google Account.
-// =======================
+// Load environment variables
+const SENDER_EMAIL = process.env.SENDER_EMAIL;
+const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD;
 
+// Configure transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.SENDER_EMAIL,
-    pass: process.env.SENDER_APP_PASSWORD
+    user: SENDER_EMAIL,
+    pass: SENDER_APP_PASSWORD,
   },
 });
 
+// OTP endpoint
 app.post("/send-otp", (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
@@ -42,6 +43,6 @@ app.post("/send-otp", (req, res) => {
   });
 });
 
-const PORT = 3000;
-app.listen(PORT, () => console.log(`OTP mailer server running on port ${PORT}`));
-
+// For Railway, use dynamic port
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ OTP mailer server running on port ${PORT}`));
