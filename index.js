@@ -10,8 +10,8 @@ app.use(bodyParser.json());
 // CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN
 // Set these in Railway Project Settings → Variables
 // ==============================================
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const CLIENT_ID = process.env.client_id;
+const CLIENT_SECRET = process.env.client_secret;
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 
 const REDIRECT_URI = "https://developers.google.com/oauthplayground";
@@ -74,3 +74,4 @@ app.post("/send-otp", async (req, res) => {
 // Use Railway dynamic port
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ OTP mailer server running on port ${PORT}`));
+
