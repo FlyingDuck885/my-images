@@ -1,55 +1,67 @@
 const express = require("express");
-const nodemailer = require("nodemailer");
-const cors = require("cors");
+const fs = require("fs");
+const { google } = require("googleapis");
 const bodyParser = require("body-parser");
 
 const app = express();
-app.use(cors());
 app.use(bodyParser.json());
 
-const SENDER_EMAIL = "ecovision.app.mobile@gmail.com";
-const SENDER_APP_PASSWORD = "osao xcqy xnsk jvag"; // from Step 2
+const CREDENTIALS = {
+  client_id: process.env.CLIENT_ID,
+  client_secret: process.env.CLIENT_SECRET,
+  redirect_uris: ["urn:ietf:wg:oauth:2.0:oob", "http://localhost"],
+};
 
-// Create transporter using Gmail
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: SENDER_EMAIL,
-    pass: SENDER_APP_PASSWORD,
-  },
-});
+const SCOPES = ["https://www.googleapis.com/auth/gmail.send"];
+const TOKEN_PATH = "token.json";
 
-// POST /send-otp route
+const { client_id, client_secret, redirect_uris } = CREDENTIALS;
+const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+
+// Load saved token if exists
+if (fs.existsSync(TOKEN_PATH)) {
+  const token = JSON.parse(fs.readFileSync(TOKEN_PATH));
+  oAuth2Client.setCredentials(token);
+}
+
+// Send email function
+function sendEmail(auth, toEmail, otp) {
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const messageParts = [
+    `To: ${toEmail}`,
+    "Subject: Your EcoVision OTP",
+    "",
+    `Your OTP is: ${otp}`,
+  ];
+  const message = messageParts.join("\n");
+
+  const encodedMessage = Buffer.from(message)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  return gmail.users.messages.send({
+    userId: "me",
+    requestBody: { raw: encodedMessage },
+  });
+}
+
+// API endpoint
 app.post("/send-otp", async (req, res) => {
   const { email, otp } = req.body;
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, message: "email and otp required" });
-  }
-
-  const mailOptions = {
-    from: `EcoVision <${SENDER_EMAIL}>`,
-    to: email,
-    subject: "Your EcoVision OTP Code",
-    text: `Your EcoVision verification code is: ${otp}\nThis code will expire in 10 minutes.`,
-  };
+  if (!email || !otp) return res.status(400).json({ success: false, message: "email and otp required" });
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent:", info.response);
-    res.status(200).json({ success: true, message: "OTP sent successfully!" });
-  } catch (error) {
-    console.error("❌ Error sending email:", error);
-    res.status(500).json({ success: false, error: error.message });
+    const result = await sendEmail(oAuth2Client, email, otp);
+    res.json({ success: true, data: result.data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Start server
+// Use Railway dynamic port
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ OTP mailer running on port ${PORT}`));
-app.listen(process.env.PORT || 8080, () =>
-  console.log("✅ OTP mailer running on port", process.env.PORT || 8080)
-);
-
-
+app.listen(PORT, () => console.log(`✅ OTP mailer server running on port ${PORT}`));
