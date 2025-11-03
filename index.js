@@ -12,7 +12,9 @@ const SENDER_APP_PASSWORD = "osao xcqy xnsk jvag"; // from Step 2
 
 // Create transporter using Gmail
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: SENDER_EMAIL,
     pass: SENDER_APP_PASSWORD,
@@ -49,4 +51,5 @@ app.listen(PORT, () => console.log(`✅ OTP mailer running on port ${PORT}`));
 app.listen(process.env.PORT || 8080, () =>
   console.log("✅ OTP mailer running on port", process.env.PORT || 8080)
 );
+
 
